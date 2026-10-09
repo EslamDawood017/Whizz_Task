@@ -18,6 +18,14 @@ namespace Employee.API.Controllers
         {
             _sender = sender;
         }
+        [HttpGet]
+        public async Task<ActionResult<ApiResponse<List<EmployeeDto>>>> GetAll(
+        [FromQuery] GetEmployeesQuery query,
+        CancellationToken cancellationToken)
+        {
+            var response = await _sender.Send(query, cancellationToken);
+            return Ok(response);
+        }
 
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<ApiResponse<EmployeeDto>>> GetById(Guid id, CancellationToken cancellationToken)
