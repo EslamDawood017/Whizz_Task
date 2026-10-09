@@ -73,5 +73,17 @@ namespace Employee.API.Controllers
             }
             return StatusCode(StatusCodes.Status201Created, response);
         }
+        [HttpDelete("{id:guid}")]
+        public async Task<ActionResult<ApiResponse<bool>>> Delete(
+        Guid id,
+        CancellationToken cancellationToken)
+        {
+            var response = await _sender.Send(new DeleteEmployeeCommand(id), cancellationToken);
+            if (response.Error != null)
+            {
+                return NotFound(response); 
+            }
+            return Ok(response); 
+        }
     }
 }
