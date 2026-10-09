@@ -4,6 +4,7 @@ using Employee.Application.Common.Interfaces;
 using Employee.Application.Features.Employee.Commands;
 using Employee.Application.Features.Employee.DTOs;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,16 +31,21 @@ namespace Employee.Application.Features.Employee.Handlers
             CreateEmployeeCommand request,
             CancellationToken cancellationToken)
         {
+             var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+             var emailExists = await _context.Employees
+            .AnyAsync(e => e.Email.ToLower() == normalizedEmail, cancellationToken);
             
+            if (emailExists)
+            {
+                return ApiResponse<EmployeeDto>.Failure($"An employee with email '{request.Email}' already exists.");
+            }
+
             var employee = _mapper.Map<Domain.Entities.Employee>(request);
-
-            
             employee.Id = Guid.NewGuid();
-
-            employee.TenantId = _tenantContext.TenantId!.Value; 
-            
+            employee.TenantId = _tenantContext.TenantId!.Value;
+            employee.Email = normalizedEmail; // Store normalized email
             employee.CreatedAt = DateTime.UtcNow;
-
             employee.CustomData = string.IsNullOrWhiteSpace(request.CustomData) ? "{}" : request.CustomData;
 
             await _context.Employees.AddAsync(employee, cancellationToken);

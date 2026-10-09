@@ -25,7 +25,10 @@ namespace Employee.API.Controllers
         {
             var response = await _sender.Send(command, cancellationToken);
 
-            return StatusCode(StatusCodes.Status201Created, response);
+        if (response.Error != null)
+        {
+            return Conflict(response); 
         }
+        return StatusCode(StatusCodes.Status201Created, response);       
     }
 }
