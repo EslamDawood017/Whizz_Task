@@ -1,7 +1,9 @@
 using Employee.API.Middleware;
 using Employee.Application;
+using Employee.Application.Common;
 using Employee.Infrastructure;
 using Employee.Infrastructure.Persistence.Data;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace Employee.API
@@ -12,11 +14,35 @@ namespace Employee.API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
             builder.Services.AddApplication();
             builder.Services.AddInfrastructure(builder.Configuration);
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers()
+            .AddJsonOptions(options =>
+            {            
+                options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never;
+            })
+            .ConfigureApiBehaviorOptions(options =>
+            {
+                
+                options.InvalidModelStateResponseFactory = context =>
+                {
+                    var errors = context.ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .Where(msg => !string.IsNullOrWhiteSpace(msg))
+                        .ToList();
+
+                    var combinedError = string.Join("; ", errors);
+                    if (string.IsNullOrWhiteSpace(combinedError))
+                    {
+                        combinedError = "Invalid request payload.";
+                    }
+                    var envelope = ApiResponse<object>.Failure(combinedError);
+                    return new BadRequestObjectResult(envelope);
+                };
+            });
+
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 

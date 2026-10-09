@@ -24,21 +24,14 @@ namespace Employee.API.Middleware
 
             //  Extract and Validate the Header
             if (!context.Request.Headers.TryGetValue("X-Tenant-Id", out var tenantHeaderValues) ||
-                !Guid.TryParse(tenantHeaderValues.FirstOrDefault(), out var tenantId) ||
-                tenantId == Guid.Empty)
+            !Guid.TryParse(tenantHeaderValues.FirstOrDefault(), out var tenantId) ||
+            tenantId == Guid.Empty)
             {
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
-
                 context.Response.ContentType = "application/json";
-
-                var errorResponse = new
-                {
-                    data = (object?)null,
-                    pagination = (object?)null,
-                    error = "A valid 'X-Tenant-Id' header is required."
-                };
+                
+                var errorResponse = ApiResponse<object>.Failure("A valid 'X-Tenant-Id' header is required.");
                 await context.Response.WriteAsJsonAsync(errorResponse);
-
                 return;
             }
 
