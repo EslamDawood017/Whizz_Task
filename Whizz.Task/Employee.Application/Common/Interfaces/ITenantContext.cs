@@ -1,0 +1,15 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Employee.Application.Common.Interfaces
+{
+    public interface ITenantContext
+    {
+        Guid? TenantId { get; }
+        bool HasTenant { get; }
+        void SetTenantId(Guid tenantId);
+    }
+}

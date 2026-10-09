@@ -1,3 +1,4 @@
+using Employee.API.Middleware;
 using Employee.Infrastructure;
 
 namespace Employee.API
@@ -12,12 +13,21 @@ namespace Employee.API
             builder.Services.AddInfrastructure(builder.Configuration);
 
             builder.Services.AddControllers();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
 
             var app = builder.Build();
 
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
             // Configure the HTTP request pipeline.
 
             app.UseAuthorization();
+
+            app.UseMiddleware<TenantMiddleware>();
 
 
             app.MapControllers();

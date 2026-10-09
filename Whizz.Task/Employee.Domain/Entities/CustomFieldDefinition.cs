@@ -13,8 +13,9 @@ namespace Employee.Domain.Entities
         public string FieldName { get; set; } = string.Empty;
         public string DataType { get; set; } = string.Empty;
         public bool IsRequired { get; set; }
+    
 
-
-        public Tenant Tenant { get; set; }
+        public Tenant? Tenant { get; set; } 
+        
     }
 }

@@ -1,4 +1,6 @@
-﻿using Employee.Infrastructure.Persistence.Data;
+﻿using Employee.Application.Common.Interfaces;
+using Employee.Infrastructure.Common;
+using Employee.Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +16,8 @@ namespace Employee.Infrastructure
 
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(connectionString));
+
+            services.AddScoped<ITenantContext, TenantContext>();
 
             return services;
         }
