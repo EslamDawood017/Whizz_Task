@@ -46,6 +46,8 @@ namespace Employee.Infrastructure.Persistence.Configurations
                    .HasForeignKey(e => e.TenantId)
                    .OnDelete(DeleteBehavior.Restrict);
 
+
+
         }
     }
 }

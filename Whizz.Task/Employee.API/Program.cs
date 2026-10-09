@@ -1,5 +1,7 @@
 using Employee.API.Middleware;
 using Employee.Infrastructure;
+using Employee.Infrastructure.Persistence.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Employee.API
 {
@@ -16,6 +18,7 @@ namespace Employee.API
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
@@ -23,6 +26,16 @@ namespace Employee.API
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+
+            /*
+            using (var scope = app.Services.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                await context.Database.MigrateAsync();
+                await DatabaseSeeder.SeedAsync(context);
+            }
+            */
+
             // Configure the HTTP request pipeline.
 
             app.UseAuthorization();
