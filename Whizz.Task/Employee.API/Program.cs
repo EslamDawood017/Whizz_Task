@@ -1,4 +1,5 @@
 using Employee.API.Middleware;
+using Employee.Application;
 using Employee.Infrastructure;
 using Employee.Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
@@ -7,11 +8,12 @@ namespace Employee.API
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            builder.Services.AddApplication();
             builder.Services.AddInfrastructure(builder.Configuration);
 
             builder.Services.AddControllers();
@@ -31,8 +33,8 @@ namespace Employee.API
             using (var scope = app.Services.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                 context.Database.MigrateAsync();
-                 DatabaseSeeder.SeedAsync(context);
+                 await context.Database.MigrateAsync();
+                 await DatabaseSeeder.SeedAsync(context);
             }
 
 
