@@ -26,9 +26,9 @@ namespace Employee.API.Controllers
 
             if (response.Error != null)
             {
-                return NotFound(response); 
+                return NotFound(response);
             }
-            return Ok(response); 
+            return Ok(response);
         }
 
         [HttpPost]
@@ -38,10 +38,11 @@ namespace Employee.API.Controllers
         {
             var response = await _sender.Send(command, cancellationToken);
 
-        if (response.Error != null)
-        {
-            return Conflict(response); 
+            if (response.Error != null)
+            {
+                return Conflict(response);
+            }
+            return StatusCode(StatusCodes.Status201Created, response);
         }
-        return StatusCode(StatusCodes.Status201Created, response);       
     }
 }
