@@ -18,6 +18,27 @@ namespace Employee.API.Controllers
         {
             _sender = sender;
         }
+
+
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<ApiResponse<EmployeeDto>>> Update(
+        Guid id,
+        [FromBody] UpdateEmployeeCommand command,
+        CancellationToken cancellationToken)
+        {
+            command.Id = id;
+            var response = await _sender.Send(command, cancellationToken);
+            if (response.Error != null)
+            {
+                if (response.Error.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                {
+                    return NotFound(response);
+                }
+                return Conflict(response);
+            }
+            return Ok(response); 
+        }
+
         [HttpGet]
         public async Task<ActionResult<ApiResponse<List<EmployeeDto>>>> GetAll(
         [FromQuery] GetEmployeesQuery query,
