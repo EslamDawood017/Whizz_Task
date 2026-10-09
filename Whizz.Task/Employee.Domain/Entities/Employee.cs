@@ -17,11 +17,13 @@ namespace Employee.Domain.Entities
         public string Department { get; set; } = string.Empty;
         public Money? Salary { get; set; }
         public EmployeeStatus Status { get; set; } = EmployeeStatus.Active;
-        public DateTime CustomData { get; set; }
+        public string CustomData { get; set; } = "{}";
         public Guid TenantId { get; set; }
         public DateTime? DeletedAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+
+        public Tenant? Tenant { get; set; }
 
     }
 }
