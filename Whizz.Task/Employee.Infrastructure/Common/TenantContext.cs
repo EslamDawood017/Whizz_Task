@@ -11,8 +11,8 @@ namespace Employee.Infrastructure.Common
 
         public void SetTenantId(Guid tenantId)
         {
-             TenantId = tenantId;
-             HasTenant = true;
+            TenantId = tenantId;
+            HasTenant = true;
         }
     }
 }
