@@ -1,4 +1,5 @@
-﻿using Employee.Application.Common.Interfaces;
+﻿using Employee.Application.Common;
+using Employee.Application.Common.Interfaces;
 
 namespace Employee.API.Middleware
 {

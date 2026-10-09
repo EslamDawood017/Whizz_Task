@@ -68,6 +68,8 @@ namespace Employee.API
 
             app.UseAuthorization();
 
+            app.UseMiddleware<ExceptionHandlingMiddleware>();
+
             app.UseMiddleware<TenantMiddleware>();
 
 
