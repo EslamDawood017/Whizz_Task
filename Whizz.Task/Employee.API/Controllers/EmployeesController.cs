@@ -1,6 +1,7 @@
 ﻿using Employee.Application.Common;
 using Employee.Application.Features.Employee.Commands;
 using Employee.Application.Features.Employee.DTOs;
+using Employee.Application.Features.Employee.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,18 @@ namespace Employee.API.Controllers
         public EmployeesController(ISender sender)
         {
             _sender = sender;
+        }
+
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<ApiResponse<EmployeeDto>>> GetById(Guid id, CancellationToken cancellationToken)
+        {
+            var response = await _sender.Send(new GetEmployeeByIdQuery(id), cancellationToken);
+
+            if (response.Error != null)
+            {
+                return NotFound(response); 
+            }
+            return Ok(response); 
         }
 
         [HttpPost]
