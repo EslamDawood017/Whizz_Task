@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Employee.Infrastructure.Persistence.Data
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : DbContext, IApplicationDbContext
     {
         private readonly ITenantContext _tenantContext;
         public DbSet<Tenant> Tenants { get; set; }

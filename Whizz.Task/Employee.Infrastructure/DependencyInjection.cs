@@ -19,6 +19,8 @@ namespace Employee.Infrastructure
 
             services.AddScoped<ITenantContext, TenantContext>();
 
+            services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+
             return services;
         }
     }
