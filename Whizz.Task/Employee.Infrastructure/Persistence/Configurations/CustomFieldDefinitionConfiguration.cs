@@ -23,7 +23,7 @@ namespace Employee.Infrastructure.Persistence.Configurations
 
             builder.HasIndex(x => new {x.TenantId , x.FieldName}).IsUnique();
 
-            builder.HasOne<Tenant>()
+            builder.HasOne(x => x.Tenant)
                 .WithMany()
                 .HasForeignKey(x => x.TenantId)
                 .OnDelete(DeleteBehavior.Cascade);

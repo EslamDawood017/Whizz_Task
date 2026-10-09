@@ -27,14 +27,14 @@ namespace Employee.API
                 app.UseSwaggerUI();
             }
 
-            /*
+
             using (var scope = app.Services.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                await context.Database.MigrateAsync();
-                await DatabaseSeeder.SeedAsync(context);
+                 context.Database.MigrateAsync();
+                 DatabaseSeeder.SeedAsync(context);
             }
-            */
+
 
             // Configure the HTTP request pipeline.
 
