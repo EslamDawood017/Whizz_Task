@@ -1,0 +1,829 @@
+{
+  "info": {
+    "_postman_id": "multi-tenant-employee-api",
+    "name": "Multi-Tenant Employee API",
+    "description": "Complete test collection for the Multi-Tenant Employee API.\n\nTwo seeded tenants are pre-configured as collection variables:\n- Tenant A: 11111111-1111-1111-1111-111111111111\n- Tenant B: 22222222-2222-2222-2222-222222222222\n\nSwitch between tenants using the 'Tenant A' and 'Tenant B' folders, or by changing the X-Tenant-Id header.\n\nAll endpoints require the X-Tenant-Id header.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string",
+      "description": "Base URL of the API. Change to http://localhost:5000 for local dev without Docker."
+    },
+    {
+      "key": "tenantAId",
+      "value": "11111111-1111-1111-1111-111111111111",
+      "type": "string",
+      "description": "Tenant A Corp (seeded)"
+    },
+    {
+      "key": "tenantBId",
+      "value": "22222222-2222-2222-2222-222222222222",
+      "type": "string",
+      "description": "Tenant B Industries (seeded)"
+    },
+    {
+      "key": "createdEmployeeId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated after Create Employee request (used by subsequent tests)"
+    }
+  ],
+  "item": [
+    {
+      "name": "🏥 Health & Docs",
+      "item": [
+        {
+          "name": "Swagger UI",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/swagger",
+              "host": ["{{baseUrl}}"],
+              "path": ["swagger"]
+            },
+            "description": "Open Swagger UI — does NOT require X-Tenant-Id header (bypassed by middleware)."
+          }
+        },
+        {
+          "name": "Swagger JSON",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/swagger/v1/swagger.json",
+              "host": ["{{baseUrl}}"],
+              "path": ["swagger", "v1", "swagger.json"]
+            },
+            "description": "Returns the OpenAPI specification JSON."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔑 Tenant Validation Tests",
+      "item": [
+        {
+          "name": "❌ Missing X-Tenant-Id → 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"]
+            },
+            "description": "Request without X-Tenant-Id header. Expects 400 Bad Request with error about missing header."
+          }
+        },
+        {
+          "name": "❌ Invalid Tenant GUID → 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "not-a-valid-guid"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"]
+            },
+            "description": "Request with malformed GUID in X-Tenant-Id header. Expects 400 Bad Request."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏢 Tenant A — Create & Read",
+      "item": [
+        {
+          "name": "✅ Create Employee (Tenant A) → 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.id) {",
+                  "    pm.collectionVariables.set('createdEmployeeId', res.data.id);",
+                  "    console.log('Saved employee ID:', res.data.id);",
+                  "}",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Data contains employee', () => {",
+                  "    pm.expect(res.data).to.not.be.null;",
+                  "    pm.expect(res.data.firstName).to.equal('Alan');",
+                  "    pm.expect(res.error).to.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Alan\",\n  \"lastName\": \"Turing\",\n  \"email\": \"alan.turing@tenanta.com\",\n  \"department\": \"Engineering\",\n  \"status\": 0,\n  \"salary\": {\n    \"amountMinor\": 1200000,\n    \"currencyCode\": \"USD\"\n  },\n  \"customData\": \"{}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"]
+            },
+            "description": "Creates a new employee under Tenant A.\n\n🔹 salary.amountMinor: stored in minor units (cents). 1200000 = $12,000.00\n🔹 status: 0 = Active, 1 = Suspended\n🔹 The employee ID is automatically saved to the {{createdEmployeeId}} variable for subsequent requests.\n\n⚠️ NOTE: Set Content-Type header dropdown to JSON, not Text."
+          }
+        },
+        {
+          "name": "✅ Get Employee By ID (Tenant A) → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Employee data returned', () => {",
+                  "    pm.expect(res.data).to.not.be.null;",
+                  "    pm.expect(res.error).to.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees/{{createdEmployeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees", "{{createdEmployeeId}}"]
+            },
+            "description": "Fetch the employee created in the previous request.\nUses the auto-captured {{createdEmployeeId}} variable."
+          }
+        },
+        {
+          "name": "✅ List Employees (Tenant A) — Page 1 → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Pagination metadata present', () => {",
+                  "    pm.expect(res.pagination).to.not.be.null;",
+                  "    pm.expect(res.pagination.pageNumber).to.equal(1);",
+                  "    pm.expect(res.pagination.pageSize).to.equal(5);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees?pageNumber=1&pageSize=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "5" }
+              ]
+            },
+            "description": "Lists employees for Tenant A with pagination.\nOnly returns Tenant A employees — Tenant B data is invisible."
+          }
+        },
+        {
+          "name": "✅ List Employees — Filter by Department → 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees?department=Engineering&pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"],
+              "query": [
+                { "key": "department", "value": "Engineering" },
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "description": "Filter employees by department name."
+          }
+        },
+        {
+          "name": "✅ List Employees — Filter by Status (Active) → 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees?status=0&pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"],
+              "query": [
+                { "key": "status", "value": "0", "description": "0 = Active, 1 = Suspended" },
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "description": "Filter employees by status. 0 = Active, 1 = Suspended."
+          }
+        },
+        {
+          "name": "✅ List Employees — Search by Name → 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees?search=John&pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"],
+              "query": [
+                { "key": "search", "value": "John" },
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "description": "Full-text search on FirstName, LastName, and Email."
+          }
+        },
+        {
+          "name": "✅ Update Employee (Tenant A) → 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Alan\",\n  \"lastName\": \"Turing\",\n  \"email\": \"alan.turing.updated@tenanta.com\",\n  \"department\": \"Research\",\n  \"status\": 0,\n  \"salary\": {\n    \"amountMinor\": 1500000,\n    \"currencyCode\": \"USD\"\n  },\n  \"customData\": \"{}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees/{{createdEmployeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees", "{{createdEmployeeId}}"]
+            },
+            "description": "Update the employee created earlier. The audit log will capture the changes."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏢 Tenant B — Isolation Proof",
+      "item": [
+        {
+          "name": "✅ Create Employee (Tenant B) → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantBId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Grace\",\n  \"lastName\": \"Hopper\",\n  \"email\": \"grace.hopper@tenantb.com\",\n  \"department\": \"Technology\",\n  \"status\": 0,\n  \"salary\": {\n    \"amountMinor\": 1100000,\n    \"currencyCode\": \"USD\"\n  },\n  \"customData\": \"{}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"]
+            },
+            "description": "Creates an employee under Tenant B."
+          }
+        },
+        {
+          "name": "✅ List Employees (Tenant B) — Only Tenant B Data → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('No Tenant A data leaked', () => {",
+                  "    const tenantAId = '11111111-1111-1111-1111-111111111111';",
+                  "    if (res.data) {",
+                  "        res.data.forEach(emp => {",
+                  "            pm.expect(emp.tenantId, 'Tenant isolation violated!').to.not.equal(tenantAId);",
+                  "        });",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantBId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "description": "Lists employees for Tenant B. Should NOT contain any Tenant A employees."
+          }
+        },
+        {
+          "name": "🔒 Tenant B CANNOT Access Tenant A Employee → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found (Isolation working!)', () => pm.response.to.have.status(404));",
+                  "const res = pm.response.json();",
+                  "pm.test('Error message returned', () => {",
+                  "    pm.expect(res.error).to.not.be.null;",
+                  "    pm.expect(res.data).to.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantBId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees/{{createdEmployeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees", "{{createdEmployeeId}}"]
+            },
+            "description": "🔒 TENANT ISOLATION PROOF\n\nAttempts to access the employee created by Tenant A using Tenant B's header.\nExpects 404 Not Found — the employee is invisible to Tenant B.\n\n⚠️ Run 'Create Employee (Tenant A)' first to populate {{createdEmployeeId}}."
+          }
+        }
+      ]
+    },
+    {
+      "name": "⚠️ Error & Validation Tests",
+      "item": [
+        {
+          "name": "❌ Create — Missing Required Fields → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "const res = pm.response.json();",
+                  "pm.test('Error message returned', () => pm.expect(res.error).to.not.be.null);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lastName\": \"NoFirstName\",\n  \"email\": \"missing@tenanta.com\",\n  \"department\": \"Test\",\n  \"status\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"]
+            },
+            "description": "Intentionally missing 'firstName'. Expects 400 with FluentValidation error."
+          }
+        },
+        {
+          "name": "❌ Create — Invalid Email Format → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"email\": \"not-an-email\",\n  \"department\": \"Engineering\",\n  \"status\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"]
+            },
+            "description": "Expects 400 Bad Request with email format validation error."
+          }
+        },
+        {
+          "name": "❌ Create — Duplicate Email in Same Tenant → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409 Conflict', () => pm.response.to.have.status(409));",
+                  "const res = pm.response.json();",
+                  "pm.test('Conflict error returned', () => {",
+                  "    pm.expect(res.error).to.include('already exists');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Duplicate\",\n  \"lastName\": \"Turing\",\n  \"email\": \"john.doe@tenanta.com\",\n  \"department\": \"HR\",\n  \"status\": 0,\n  \"customData\": \"{}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"]
+            },
+            "description": "Attempts to create an employee with the same email as a seeded employee (john.doe@tenanta.com).\nExpects 409 Conflict."
+          }
+        },
+        {
+          "name": "❌ Create — Same Email Allowed in DIFFERENT Tenant → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantBId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.doe@tenanta.com\",\n  \"department\": \"Finance\",\n  \"status\": 0,\n  \"customData\": \"{}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"]
+            },
+            "description": "🔑 TENANT-SCOPED EMAIL UNIQUENESS\n\nThe same email (john.doe@tenanta.com) that would conflict in Tenant A is ALLOWED in Tenant B.\nEmail uniqueness is per-tenant, not global.\nExpects 201 Created."
+          }
+        },
+        {
+          "name": "❌ Get — Non-Existent Employee → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees/00000000-0000-0000-0000-000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees", "00000000-0000-0000-0000-000000000000"]
+            },
+            "description": "Fetch an employee with a random GUID that doesn't exist. Expects 404."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🗑️ Soft Delete Tests",
+      "item": [
+        {
+          "name": "✅ Delete Employee (Tenant A) → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK (soft deleted)', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Data returned', () => pm.expect(res.data).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees/{{createdEmployeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees", "{{createdEmployeeId}}"]
+            },
+            "description": "Soft-deletes the employee. Sets DeletedAt timestamp — does NOT physically remove the row.\nThe Global Query Filter will automatically exclude this employee from all future queries."
+          }
+        },
+        {
+          "name": "🔒 Get Deleted Employee → 404 (Soft Delete Working)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found (soft delete working)', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees/{{createdEmployeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees", "{{createdEmployeeId}}"]
+            },
+            "description": "After soft deletion, the employee should no longer be retrievable.\nExpects 404 Not Found — the Global Query Filter (DeletedAt == null) hides it."
+          }
+        }
+      ]
+    },
+    {
+      "name": "💰 Money Value Object Tests",
+      "item": [
+        {
+          "name": "✅ Create — Salary in USD (cents) → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Margaret\",\n  \"lastName\": \"Hamilton\",\n  \"email\": \"margaret.hamilton@tenanta.com\",\n  \"department\": \"Engineering\",\n  \"status\": 0,\n  \"salary\": {\n    \"amountMinor\": 850000,\n    \"currencyCode\": \"USD\"\n  },\n  \"customData\": \"{}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"]
+            },
+            "description": "Creates an employee with salary.\n\n💡 amountMinor = 850000 means $8,500.00 (stored in cents/minor units).\nNO float or decimal is used — this is the Money Value Object pattern."
+          }
+        },
+        {
+          "name": "❌ Create — Negative Salary → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"email\": \"negative.salary@tenanta.com\",\n  \"department\": \"Engineering\",\n  \"status\": 0,\n  \"salary\": {\n    \"amountMinor\": -500,\n    \"currencyCode\": \"USD\"\n  },\n  \"customData\": \"{}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"]
+            },
+            "description": "Attempts to create with a negative salary amount. Expects 400 Bad Request from FluentValidation."
+          }
+        },
+        {
+          "name": "❌ Create — Invalid Currency Code → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"email\": \"bad.currency@tenanta.com\",\n  \"department\": \"Engineering\",\n  \"status\": 0,\n  \"salary\": {\n    \"amountMinor\": 100000,\n    \"currencyCode\": \"INVALID\"\n  },\n  \"customData\": \"{}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"]
+            },
+            "description": "Currency code must be exactly 3 characters (ISO 4217). 'INVALID' should return 400."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Seeded Data (Read-Only Reference)",
+      "item": [
+        {
+          "name": "📖 List All Tenant A Seeded Employees",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "description": "Returns all seeded employees for Tenant A.\n\nSeeded Employees:\n- John Doe (john.doe@tenanta.com) — Engineering\n- Jane Smith (jane.smith@tenanta.com) — HR"
+          }
+        },
+        {
+          "name": "📖 List All Tenant B Seeded Employees",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantBId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "description": "Returns all seeded employees for Tenant B.\n\nSeeded Employees:\n- Bob Johnson (bob.johnson@tenantb.com) — Finance\n- Alice Williams (alice.williams@tenantb.com) — Marketing"
+          }
+        },
+        {
+          "name": "📖 Get Seeded Employee — John Doe (Tenant A)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantAId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees/10000000-0000-0000-0000-000000000001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees", "10000000-0000-0000-0000-000000000001"]
+            },
+            "description": "Directly fetches the seeded Tenant A employee: John Doe.\nID: 10000000-0000-0000-0000-000000000001"
+          }
+        },
+        {
+          "name": "📖 Get Seeded Employee — Bob Johnson (Tenant B)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantBId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/employees/20000000-0000-0000-0000-000000000001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "employees", "20000000-0000-0000-0000-000000000001"]
+            },
+            "description": "Directly fetches the seeded Tenant B employee: Bob Johnson.\nID: 20000000-0000-0000-0000-000000000001"
+          }
+        }
+      ]
+    }
+  ]
+}
