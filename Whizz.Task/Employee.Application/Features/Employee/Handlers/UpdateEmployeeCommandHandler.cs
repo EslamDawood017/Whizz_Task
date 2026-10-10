@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Employee.Application.Common;
 using Employee.Application.Common.Interfaces;
 using Employee.Application.Features.Employee.Commands;
@@ -12,11 +12,16 @@ public class UpdateEmployeeCommandHandler : IRequestHandler<UpdateEmployeeComman
 {
     private readonly IApplicationDbContext _context;
     private readonly IMapper _mapper;
+    private readonly ICustomDataValidator _customDataValidator;
 
-    public UpdateEmployeeCommandHandler(IApplicationDbContext context, IMapper mapper)
+    public UpdateEmployeeCommandHandler(
+        IApplicationDbContext context,
+        IMapper mapper,
+        ICustomDataValidator customDataValidator)
     {
         _context = context;
         _mapper = mapper;
+        _customDataValidator = customDataValidator;
     }
 
     public async Task<ApiResponse<EmployeeDto>> Handle(
@@ -39,6 +44,12 @@ public class UpdateEmployeeCommandHandler : IRequestHandler<UpdateEmployeeComman
         if (emailTaken)
         {
             return ApiResponse<EmployeeDto>.Failure($"An employee with email '{request.Email}' already exists.");
+        }
+
+        var (isValid, validationError) = await _customDataValidator.ValidateAsync(request.CustomData, cancellationToken);
+        if (!isValid)
+        {
+            return ApiResponse<EmployeeDto>.Failure(validationError!);
         }
 
        

@@ -13,12 +13,21 @@ namespace Employee.UnitTests.Features.Employee.Commands
     public class UpdateEmployeeCommandHandlerTests : TestBase
     {
         private readonly Mock<IApplicationDbContext> _mockContext;
+        private readonly Mock<ICustomDataValidator> _mockCustomDataValidator;
         private readonly UpdateEmployeeCommandHandler _handler;
 
         public UpdateEmployeeCommandHandlerTests()
         {
             _mockContext = new Mock<IApplicationDbContext>();
-            _handler = new UpdateEmployeeCommandHandler(_mockContext.Object, Mapper);
+            _mockCustomDataValidator = new Mock<ICustomDataValidator>();
+            _mockCustomDataValidator
+                .Setup(v => v.ValidateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((true, null));
+
+            _handler = new UpdateEmployeeCommandHandler(
+                _mockContext.Object,
+                Mapper,
+                _mockCustomDataValidator.Object);
         }
 
         [Fact]

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Employee.Application.Common;
 using Employee.Application.Common.Interfaces;
 using Employee.Application.Features.Employee.Commands;
@@ -28,6 +28,7 @@ namespace Employee.Application.Features.Employee.Handlers
             _context = context;
             _tenantContext = tenantContext;
             _mapper = mapper;
+            _customDataValidator = customDataValidator;
         }
         public async Task<ApiResponse<EmployeeDto>> Handle(
             CreateEmployeeCommand request,

@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace Employee.Application.Common.Interfaces
 {
-    internal class ICustomDataValidator
+    public interface ICustomDataValidator
     {
+        Task<(bool IsValid, string? ErrorMessage)> ValidateAsync(
+            string? customDataJson,
+            CancellationToken cancellationToken = default);
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Employee.Application.Common.Behaviors;
 using Employee.Application.Common.Interfaces;
+using Employee.Application.Common.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -24,6 +25,9 @@ namespace Employee.Application
 
             services.AddValidatorsFromAssembly(assembly);
             services.AddAutoMapper(cfg => cfg.AddMaps(assembly));
+
+            services.AddScoped<ICustomDataValidator, CustomDataValidator>();
+
 
 
             return services;
