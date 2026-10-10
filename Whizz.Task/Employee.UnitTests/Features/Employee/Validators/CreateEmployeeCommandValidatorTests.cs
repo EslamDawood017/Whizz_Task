@@ -52,9 +52,13 @@ namespace Employee.UnitTests.Features.Employee.Validators
         [Fact]
         public void Validate_WhenSalaryAmountIsNegative_ShouldHaveValidationError()
         {
+            var invalidSalary = (Money)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Money));
+            typeof(Money).GetProperty(nameof(Money.AmountMinor))!.SetValue(invalidSalary, -500);
+            typeof(Money).GetProperty(nameof(Money.CurrencyCode))!.SetValue(invalidSalary, "USD");
+
             var command = new CreateEmployeeCommand
             {
-                Salary = new Money(-500, "USD")
+                Salary = invalidSalary
             };
 
             var result = _validator.TestValidate(command);
