@@ -1,9 +1,10 @@
-﻿using Employee.Application.Common.Interfaces;
+using Employee.Application.Common.Interfaces;
 using Employee.Infrastructure.Common;
 using Employee.Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Employee.Infrastructure.Persistence.Interceptors;
 
 
 namespace Employee.Infrastructure
@@ -14,8 +15,13 @@ namespace Employee.Infrastructure
         {
             var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql(connectionString));
+            services.AddScoped<TenantSessionInterceptor>();
+
+            services.AddDbContext<ApplicationDbContext>((sp, options) =>
+            {
+                options.UseNpgsql(connectionString)
+                       .AddInterceptors(sp.GetRequiredService<TenantSessionInterceptor>());
+            });
 
             services.AddScoped<ITenantContext, TenantContext>();
 

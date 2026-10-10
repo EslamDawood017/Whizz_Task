@@ -1,4 +1,4 @@
-﻿using Employee.Application.Common;
+using Employee.Application.Common;
 using Employee.Application.Features.Employee.Commands;
 using Employee.Application.Features.Employee.DTOs;
 using Employee.Domain.Enums;
@@ -6,6 +6,8 @@ using Employee.Domain.ValueObjects;
 using Employee.Infrastructure.Persistence.Data;
 using Employee.IntegrationTests.Common;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
 
@@ -103,6 +105,34 @@ namespace Employee.IntegrationTests.Endpoints
             // Act 2: Attempt to retrieve -> Global Query Filter should hide soft-deleted entity
             var getResponse = await client.GetAsync($"/api/v1/employees/{employeeId}");
             getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        }
+
+        [Fact]
+        public async Task RowLevelSecurity_WhenBypassingGlobalFilters_DatabaseEngineStillEnforcesTenantBoundary()
+        {
+            // Arrange
+            using var scope = Factory.Services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var tenantContext = scope.ServiceProvider.GetRequiredService<Employee.Application.Common.Interfaces.ITenantContext>();
+
+            // Act 1: Set Tenant A in tenant context
+            tenantContext.SetTenantId(DatabaseSeeder.TenantAId);
+
+            // IgnoreQueryFilters bypasses EF Core application-level filter,
+            // but PostgreSQL RLS enforces tenant isolation at the database engine level!
+            var employeesTenantA = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(context.Employees.IgnoreQueryFilters());
+
+            // Assert 1: Only Tenant A records are returned from the database
+            employeesTenantA.Should().NotBeEmpty();
+            employeesTenantA.Should().OnlyContain(e => e.TenantId == DatabaseSeeder.TenantAId);
+
+            // Act 2: Set Tenant B in tenant context
+            tenantContext.SetTenantId(DatabaseSeeder.TenantBId);
+            var employeesTenantB = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(context.Employees.IgnoreQueryFilters());
+
+            // Assert 2: Only Tenant B records are returned from the database
+            employeesTenantB.Should().NotBeEmpty();
+            employeesTenantB.Should().OnlyContain(e => e.TenantId == DatabaseSeeder.TenantBId);
         }
     }
 }

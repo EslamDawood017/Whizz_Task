@@ -34,7 +34,8 @@ namespace Employee.IntegrationTests.Common
 
                 services.AddDbContext<ApplicationDbContext>((sp, options) =>
                 {
-                    options.UseNpgsql(_dbContainer.GetConnectionString());
+                    options.UseNpgsql(_dbContainer.GetConnectionString())
+                           .AddInterceptors(sp.GetRequiredService<Employee.Infrastructure.Persistence.Interceptors.TenantSessionInterceptor>());
                 });
             });
         }
