@@ -16,6 +16,7 @@ namespace Employee.UnitTests.Features.Employee.Commands
     {
         private readonly Mock<IApplicationDbContext> _mockContext;
         private readonly Mock<ITenantContext> _mockTenantContext;
+        private readonly Mock<ICustomDataValidator> _mockCustomDataValidator;
         private readonly CreateEmployeeCommandHandler _handler;
         private readonly Guid _tenantId = Guid.NewGuid();
 
@@ -25,10 +26,16 @@ namespace Employee.UnitTests.Features.Employee.Commands
             _mockTenantContext = new Mock<ITenantContext>();
             _mockTenantContext.Setup(t => t.TenantId).Returns(_tenantId);
 
+            _mockCustomDataValidator = new Mock<ICustomDataValidator>();
+            _mockCustomDataValidator
+                .Setup(v => v.ValidateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((true, null));
+
             _handler = new CreateEmployeeCommandHandler(
                 _mockContext.Object,
                 _mockTenantContext.Object,
-                Mapper);
+                Mapper,
+                _mockCustomDataValidator.Object);
         }
 
         [Fact]
@@ -100,6 +107,36 @@ namespace Employee.UnitTests.Features.Employee.Commands
             // Assert
             result.Error.Should().NotBeNull();
             result.Error.Should().Contain("already exists");
+            _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Handle_WhenCustomDataValidationFails_ShouldReturnFailure()
+        {
+            // Arrange
+            var existingEmployees = new List<Domain.Entities.Employee>();
+            var mockDbSet = existingEmployees.BuildMockDbSet();
+            _mockContext.Setup(c => c.Employees).Returns(mockDbSet.Object);
+
+            _mockCustomDataValidator
+                .Setup(v => v.ValidateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((false, "Required custom field 'BadgeNumber' is missing."));
+
+            var command = new CreateEmployeeCommand
+            {
+                FirstName = "Ada",
+                LastName = "Lovelace",
+                Email = "ada@example.com",
+                Department = "Engineering",
+                Status = EmployeeStatus.Active,
+                CustomData = "{}"
+            };
+
+            // Act
+            var result = await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            result.Error.Should().Be("Required custom field 'BadgeNumber' is missing.");
             _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
     }

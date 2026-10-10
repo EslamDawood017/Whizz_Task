@@ -18,10 +18,12 @@ namespace Employee.Application.Features.Employee.Handlers
         private readonly IApplicationDbContext _context;
         private readonly ITenantContext _tenantContext;
         private readonly IMapper _mapper;
+        private readonly ICustomDataValidator _customDataValidator;
         public CreateEmployeeCommandHandler(
             IApplicationDbContext context,
             ITenantContext tenantContext,
-            IMapper mapper)
+            IMapper mapper,
+            ICustomDataValidator customDataValidator)
         {
             _context = context;
             _tenantContext = tenantContext;
@@ -39,6 +41,12 @@ namespace Employee.Application.Features.Employee.Handlers
             if (emailExists)
             {
                 return ApiResponse<EmployeeDto>.Failure($"An employee with email '{request.Email}' already exists.");
+            }
+
+            var (isValid, validationError) = await _customDataValidator.ValidateAsync(request.CustomData, cancellationToken);
+            if (!isValid)
+            {
+                return ApiResponse<EmployeeDto>.Failure(validationError!);
             }
 
             var employee = _mapper.Map<Domain.Entities.Employee>(request);
